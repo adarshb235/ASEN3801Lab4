@@ -83,6 +83,14 @@ function PlotAircraftSim(time, aircraft_state_array, control_input_array, fig, c
     grid on;
     box on;
     plot(time, aircraft_state_array(12,:));
+
+    figure(fig(5));
+    hold on;
+    box on;
+    grid on;
+    plot3(aircraft_state_array(1,:), aircraft_state_array(2,:), aircraft_state_array(3,:));
+    plot3(aircraft_state_array(1,1), aircraft_state_array(2,1), aircraft_state_array(3,1), 'yo');
+    plot3(aircraft_state_array(1,end), aircraft_state_array(2,end), aircraft_state_array(3,end), 'ko');
 end
 
 function var_dot = QuadrotorEOM(t, var, g, m, I, d, km, nu, mu, motor_forces)
