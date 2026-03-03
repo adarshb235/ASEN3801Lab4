@@ -1,0 +1,104 @@
+m = 0.068; % kg
+d = 0.06; % m
+km = 0.0024; % Nm/N
+Ix = 5.8e-5; % kg m^2
+Iy = 7.2e-5; % kg m^2
+Iz = 1e-4; % kg m^2
+g = 9.81; % m/s^2
+nu = 1e-3; % N/(m/s)^2
+mu = 2e-6; % Nm/(rad/s)^2
+I = [Ix 0 0; 0 Iy 0; 0 0 Iz]; % Inertia matrix
+
+function PlotAircraftSim(time, aircraft_state_array, control_input_array, fig, col)
+    n = length(time);
+    
+    figure(fig(1));
+    hold on;
+    subplot(3, 1, 1)
+    hold on;
+    grid on;
+    box on;
+    plot(time, aircraft_state_array(1,:));
+    subplot(3, 1, 2)
+    hold on;
+    grid on;
+    box on;
+    plot(time, aircraft_state_array(2,:));
+    subplot(3, 1, 3)
+    hold on;
+    grid on;
+    box on;
+    plot(time, aircraft_state_array(3,:));
+
+    figure(fig(2));
+    hold on;
+    subplot(3, 1, 1)
+    hold on;
+    grid on;
+    box on;
+    plot(time, aircraft_state_array(4,:));
+    subplot(3, 1, 2)
+    hold on;
+    grid on;
+    box on;
+    plot(time, aircraft_state_array(5,:));
+    subplot(3, 1, 3)
+    hold on;
+    grid on;
+    box on;
+    plot(time, aircraft_state_array(6,:));
+
+    figure(fig(3));
+    hold on;
+    subplot(3, 1, 1)
+    hold on;
+    grid on;
+    box on;
+    plot(time, aircraft_state_array(7,:));
+    subplot(3, 1, 2)
+    hold on;
+    grid on;
+    box on;
+    plot(time, aircraft_state_array(8,:));
+    subplot(3, 1, 3)
+    hold on;
+    grid on;
+    box on;
+    plot(time, aircraft_state_array(9,:));
+
+    figure(fig(4));
+    hold on;
+    subplot(3, 1, 1)
+    hold on;
+    grid on;
+    box on;
+    plot(time, aircraft_state_array(10,:));
+    subplot(3, 1, 2)
+    hold on;
+    grid on;
+    box on;
+    plot(time, aircraft_state_array(11,:));
+    subplot(3, 1, 3)
+    hold on;
+    grid on;
+    box on;
+    plot(time, aircraft_state_array(12,:));
+end
+
+function var_dot = QuadrotorEOM(t, var, g, m, I, d, km, nu, mu, motor_forces)
+    var_dot = zeros(12, 1);
+    var_dot(1) = var(7);
+    var_dot(2) = var(8);
+    var_dot(3) = var(9);
+    var_dot(4) = var(10);
+    var_dot(5) = var(11);
+    var_dot(6) = var(12);
+    var_dot(7) = -g * var(5);
+    var_dot(8) = g * var(4);
+    A_mat = [-1 -1 -1 -1; -d/sqrt(2) -d/sqrt(2) d/sqrt(2) d/sqrt(2); d/sqrt(2) -d/sqrt(2) -d/sqrt(2) d/sqrt(2); km -km km -km];
+    cont_vec = A_mat * motor_forces;
+    var_dot(9) = cont_vec(1) / m;
+    var_dot(10) = cont_vec(2) / I(1,1);
+    var_dot(11) = cont_vec(3) / I(2,2);
+    var_dot(12) = cont_vec(4) / I(3,3);
+end
