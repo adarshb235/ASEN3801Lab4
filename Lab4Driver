@@ -15,11 +15,48 @@ I = [Ix 0 0; 0 Iy 0; 0 0 Iz]; % Inertia matrix
 f_trim = m * g / 4;
 motor_forces = [f_trim; f_trim; f_trim; f_trim];
 t_span = [0 10];
-var_init = zeros(12, 1);
-[t, var] = ode45(@(t, var) QuadrotorEOM(t, var, g, m, I, d, km, nu, mu, motor_forces), t_span, var_init);
+var_init_hover = zeros(12, 1);
+[t_hover, var_hover] = ode45(@(t_hover, var_hover) QuadrotorEOM(t_hover, var_hover, g, m, I, d, km, nu, mu, motor_forces), t_span, var_init_hover);
+A_mat = [-1 -1 -1 -1; -d/sqrt(2) -d/sqrt(2) d/sqrt(2) d/sqrt(2); d/sqrt(2) -d/sqrt(2) -d/sqrt(2) d/sqrt(2); km -km km -km];
+cont_vec_hover = A_mat * motor_forces;
+var_hover(abs(var_hover) < 1e-10) = 0;
 
-figure;
-plot3(var(:, 1), var(:, 2), var(:, 3));
+PlotAircraftSim(t_hover, var_hover', cont_vec_hover, [1 2 3 4 5 6], 'b-');   
+
+v_trim_V5 = 5;
+phi_trim_V5 = asin((nu * v_trim_V5) / (m * g));
+theta_trim_V5 = 0;
+psi_trim_V5 = 0;
+var_init_V5 = zeros(12, 1);
+var_init_V5(4) = phi_trim_V5;                
+var_init_V5(8) = 5 * cos(phi_trim_V5);        
+var_init_V5(9) = -5 * sin(phi_trim_V5);  
+f_trim_V5 = m * g / cos(phi_trim_V5)/ 4;
+motor_forces_V5 = [f_trim_V5; f_trim_V5; f_trim_V5; f_trim_V5];
+cont_vec_V5 = A_mat * motor_forces_V5;
+[t_V5, var_V5] = ode45(@(t_V5, var_V5) QuadrotorEOM(t_V5, var_V5, g, m, I, d, km, nu, mu, motor_forces_V5), t_span, var_init_V5);
+var_V5(abs(var_V5) < 1e-10) = 0;
+
+PlotAircraftSim(t_V5, var_V5', cont_vec_V5, [1 2 3 4 5 6], 'r-'); 
+
+psi_trim_U5 = pi/2;            
+u_trim_U5 = 5;                  
+theta_trim_U5 = asin((nu * u_trim_U5) / (m * g)); 
+phi_trim_U5 = 0;                
+
+f_trim_U5 = (m * g * cos(theta_trim_U5)) / 4;
+motor_forces_U5 = [f_trim_U5; f_trim_U5; f_trim_U5; f_trim_U5];
+
+var_init_U5 = [0; 0; 0; phi_trim_U5; theta_trim_U5; psi_trim_U5; u_trim_U5; 0; 0; 0; 0; 0];
+
+[t_U5, var_U5] = ode45(@(t_U5, var_U5) QuadrotorEOM(t_U5, var_U5, g, m, I, d, km, nu, mu, motor_forces_U5), t_span, var_init_U5);
+var_U5(abs(var_U5) < 1e-10) = 0;  
+cont_vec_U5 = A_mat * motor_forces_U5;
+
+PlotAircraftSim(t_U5, var_U5', cont_vec_U5, [1 2 3 4 5 6], 'g-'); 
+
+
+
 
 
 function PlotAircraftSim(time, aircraft_state_array, control_input_array, fig, col)
@@ -29,16 +66,22 @@ function PlotAircraftSim(time, aircraft_state_array, control_input_array, fig, c
     hold on;
     grid on;
     box on;
+    xlabel("Time (s)")
+    ylabel("Inertial X Position (m)")
     plot(time, aircraft_state_array(1,:), col);
     subplot(3, 1, 2)
     hold on;
     grid on;
     box on;
+    xlabel("Time (s)")
+    ylabel("Inertial Y Position (m)")
     plot(time, aircraft_state_array(2,:), col);
     subplot(3, 1, 3)
     hold on;
     grid on;
     box on;
+    xlabel("Time (s)")
+    ylabel("Inertial Z Position (m)")
     plot(time, aircraft_state_array(3,:), col);
 
     figure(fig(2));
@@ -47,16 +90,22 @@ function PlotAircraftSim(time, aircraft_state_array, control_input_array, fig, c
     hold on;
     grid on;
     box on;
+    xlabel("Time (s)")
+    ylabel("Roll Angle (rad)")
     plot(time, aircraft_state_array(4,:), col);
     subplot(3, 1, 2)
     hold on;
     grid on;
     box on;
+    xlabel("Time (s)")
+    ylabel("Pitch Angle (rad)")
     plot(time, aircraft_state_array(5,:), col);
     subplot(3, 1, 3)
     hold on;
     grid on;
     box on;
+    xlabel("Time (s)")
+    ylabel("Yaw Angle (rad)")
     plot(time, aircraft_state_array(6,:), col);
 
     figure(fig(3));
@@ -65,16 +114,22 @@ function PlotAircraftSim(time, aircraft_state_array, control_input_array, fig, c
     hold on;
     grid on;
     box on;
+    xlabel("Time (s)")
+    ylabel("Body Frame X Velocity (m/s)")
     plot(time, aircraft_state_array(7,:), col);
     subplot(3, 1, 2)
     hold on;
     grid on;
     box on;
+    xlabel("Time (s)")
+    ylabel("Body Frame Y Velocity (m/s)")
     plot(time, aircraft_state_array(8,:), col);
     subplot(3, 1, 3)
     hold on;
     grid on;
     box on;
+    xlabel("Time (s)")
+    ylabel("Body Frame Z Velocity (m/s)")
     plot(time, aircraft_state_array(9,:), col);
 
     figure(fig(4));
@@ -83,29 +138,37 @@ function PlotAircraftSim(time, aircraft_state_array, control_input_array, fig, c
     hold on;
     grid on;
     box on;
+    xlabel("Time (s)")
+    ylabel("Roll Rate (rad/s)")
     plot(time, aircraft_state_array(10,:), col);
     subplot(3, 1, 2)
     hold on;
     grid on;
     box on;
+    xlabel("Time (s)")
+    ylabel("Pitch Rate (rad/s)")
     plot(time, aircraft_state_array(11,:), col);
     subplot(3, 1, 3)
     hold on;
     grid on;
     box on;
+    xlabel("Time (s)")
+    ylabel("Yaw Rate (rad/s)")
     plot(time, aircraft_state_array(12,:), col);
 
     figure(fig(5));
     hold on;
-    box on;
     grid on;
     plot3(aircraft_state_array(1,:), aircraft_state_array(2,:), aircraft_state_array(3,:));
-    plot3(aircraft_state_array(1,1), aircraft_state_array(2,1), aircraft_state_array(3,1), 'yo');
-    plot3(aircraft_state_array(1,end), aircraft_state_array(2,end), aircraft_state_array(3,end), 'ko');
+    plot3(aircraft_state_array(1,1), aircraft_state_array(2,1), aircraft_state_array(3,1), 'go');
+    plot3(aircraft_state_array(1,end), aircraft_state_array(2,end), aircraft_state_array(3,end), 'ro');
+    view(45, 30)
+    axis equal; 
+    xlabel('X (m)'); ylabel('Y (m)'); zlabel('Z (m)');
 end
 
 function var_dot = QuadrotorEOM(t, var, g, m, I, d, km, nu, mu, motor_forces)
-    var_dot = zeros(12, 1);
+    ignore_drag = 0;
     phi = var(4); 
     theta = var(5); 
     psi = var(6);
@@ -121,7 +184,11 @@ function var_dot = QuadrotorEOM(t, var, g, m, I, d, km, nu, mu, motor_forces)
     A_mat = [-1 -1 -1 -1; -d/sqrt(2) -d/sqrt(2) d/sqrt(2) d/sqrt(2); d/sqrt(2) -d/sqrt(2) -d/sqrt(2) d/sqrt(2); km -km km -km];
     cont_vec = A_mat * motor_forces;
     w_skew = [0 -r q; r 0 -p; -q p 0] ;
-    x_3_dot = w_skew * [u; v; w] + g * [sin(theta); -cos(theta)*sin(phi); -cos(theta)*cos(phi)] + (1/m)*[0; 0; cont_vec(1)] - (nu/m)*[u; v; w];
+    x_3_dot = -w_skew * [u; v; w] - g * [sin(theta); -cos(theta)*sin(phi); -cos(theta)*cos(phi)] + (1/m)*[0; 0; cont_vec(1)] - (nu/m)*[u; v; w];
     x_4_dot = inv(I) * ([cont_vec(2); cont_vec(3); cont_vec(4)] - w_skew * I * [p; q; r] - mu * [p; q; r]);
+    if (ignore_drag == 1)
+    x_3_dot = -w_skew * [u; v; w] - g * [sin(theta); -cos(theta)*sin(phi); -cos(theta)*cos(phi)] + (1/m)*[0; 0; cont_vec(1)];
+    x_4_dot = inv(I) * ([cont_vec(2); cont_vec(3); cont_vec(4)] - w_skew * I * [p; q; r]);
+    end
     var_dot = [x_1_dot; x_2_dot; x_3_dot; x_4_dot];
 end
