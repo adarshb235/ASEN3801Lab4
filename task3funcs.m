@@ -61,6 +61,66 @@ K1_spin = 0.004;
 K2_psi = 0;
 
 
+%% 3.3 main code
+tspan = [0 10]; % 10 sec simulation window
+
+% a. Deviation by +5 deg in roll
+var0_a = zeros(12, 1);
+var0_a(4) = deg2rad(5);
+[t_a, var_a] = ode45(@(t, var) ClosedLoop_QuadrotorEOM_Linearized(t, var), tspan, var0_a);
+% a plot
+figure()
+plot(t_a, var_a(:,4))
+hold on
+grid on
+title('a. Deviation by +5 deg in roll')
+xlabel('Time (s)')
+ylabel('Roll Angle (rad)')
+hold off
+
+% b. Deviation by +5 deg in pitch
+var0_b = zeros(12, 1);
+var0_b(5) = deg2rad(5);
+[t_b, var_b] = ode45(@(t, var) ClosedLoop_QuadrotorEOM_Linearized(t, var), tspan, var0_b);
+% b plot
+figure()
+plot(t_b, var_b(:,5))
+hold on
+grid on
+title('b. Deviation by +5 deg in pitch')
+xlabel('Time (s)')
+ylabel('Pitch Angle (rad)')
+hold off
+
+% c. Deviation by +0.1 rad/sec in roll rate
+var0_c = zeros(12, 1);
+var0_c(10) = 0.1;
+[t_c, var_c] = ode45(@(t, var) ClosedLoop_QuadrotorEOM_Linearized(t, var), tspan, var0_c);
+% c plot
+figure()
+plot(t_c, var_c(:,10))
+hold on
+grid on
+title('c. Deviation by +0.1 rad/sec in roll rate')
+xlabel('Time (s)'); ylabel('Roll Rate (rad/s)')
+hold off
+
+% d. Deviation by +0.1 rad/sec in pitch rate
+var0_d = zeros(12, 1);
+var0_d(11) = 0.1;
+[t_d, var_d] = ode45(@(t, var) ClosedLoop_QuadrotorEOM_Linearized(t, var), tspan, var0_d);
+% d plot
+figure()
+plot(t_d, var_d(:,11))
+hold on
+grid on
+title('d. Deviation by +0.1 rad/sec in pitch rate')
+xlabel('Time (s)')
+ylabel('Pitch Rate (rad/s)')
+hold off
+
+
+
 %% 3.2 
 %{
 Create a function to calculate the control vectors Fc and Gc. The function takes as input the 12x1
@@ -123,4 +183,31 @@ d. Deviation by +0.1 rad/sec in pitch rate
 %}
 
 
+function var_dot = ClosedLoop_QuadrotorEOM_Linearized(t, var, g, m, I)
+% t = time, var =  delta input state vector, m = mass, g = gravity constant
+% deltaFc and deltaGc are deviations from the steady hover trim condition
+% Fc = [Xc, Yc, Zc], Gc = [Lc, Mc, Nc]
+% var =     [dx; dy; dz; dphi; dtheta; dpsi; du; dv; dw; dp; dq; dr]
 
+% calculate delta Fc and Gc from func
+[Fc, Gc] = InnerLoopFeedback(var);
+deltaFc = Fc - [0; 0; m*g]; 
+deltaGc = Gc - [0; 0; 0];
+
+% delta pos
+var_dot(1:3) = var(7:9); % xdot, ydot, zdot = u, v ,w
+
+% delta euler
+var_dot(4:6) = var(10:12); %phidot, thetadot, psidot = p, q, r
+
+% delta vel
+var_dot(7:9) = g .* [-var(5); var(4); 0] + 1/m .* [0; 0; deltaFc(3)];
+
+% delta angular vel
+Ix = I(1,1);
+Iy = I(2,2);
+Iz = I(3,3);
+
+var_dot(10:12) = [1/Ix * deltaGc(1); 1/Iy * deltaGc(2); 1/Iz * deltaGc(3)];
+
+end
