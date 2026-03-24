@@ -235,7 +235,7 @@ function var_dot = QuadrotorEOM_Linearized(t, var, g, m, I, deltaFc, deltaGc)
 end
 
 function [Fc, Gc] = RotationDerivativeFeedback(var, m, g)
-    Fc = m * g;
+    Fc = [0 0 m*g];
 
     p = var(10);
     q = var(11);
