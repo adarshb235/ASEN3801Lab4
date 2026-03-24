@@ -55,6 +55,29 @@ cont_vec_U5 = A_mat * motor_forces_U5;
 
 PlotAircraftSim(t_U5, var_U5', cont_vec_U5, [1 2 3 4 5 6], 'g-'); 
 
+% Define the 6 deviations
+deviations = zeros(6, 12);
+deviations(1, 4)  = 5 * pi/180;    % a) +5 deg roll
+deviations(2, 5)  = 5 * pi/180;    % b) +5 deg pitch
+deviations(3, 6)  = 5 * pi/180;    % c) +5 deg yaw
+deviations(4, 10) = 0.1;           % d) +0.1 rad/s roll rate
+deviations(5, 11) = 0.1;           % e) +0.1 rad/s pitch rate
+deviations(6, 12) = 0.1;           % f) +0.1 rad/s yaw rate
+
+titles = {'Roll Dev', 'Pitch Dev', 'Yaw Dev', 'p Dev', 'q Dev', 'r Dev'};
+
+for i = 1:6
+    % Initial Condition: Hover + Deviation
+    var_init = zeros(12, 1) + deviations(i, :)';
+    
+    % Simulate (using hover motor forces)
+    [t, var] = ode45(@(t, var) QuadrotorEOM(t, var, g, m, I, d, km, nu, mu, motor_forces), [0 10], var_init);
+    
+    % Plot (Use a unique figure set for each deviation)
+    fig_offsets = (i-1)*6 + [1:6]; 
+    PlotAircraftSim(t, var', cont_vec_hover, fig_offsets, 'b-');
+    sgtitle(titles{i}); % Add a title to identify which simulation is which
+end
 
 
 
@@ -191,4 +214,47 @@ function var_dot = QuadrotorEOM(t, var, g, m, I, d, km, nu, mu, motor_forces)
     x_4_dot = inv(I) * ([cont_vec(2); cont_vec(3); cont_vec(4)] - w_skew * I * [p; q; r]);
     end
     var_dot = [x_1_dot; x_2_dot; x_3_dot; x_4_dot];
+end
+
+function var_dot = QuadrotorEOM_Linearized(t, var, g, m, I, deltaFc, deltaGc)    
+    var_dot = zeros(12, 1);
+    var_dot(1) = var(7);
+    var_dot(2) = var(8);
+    var_dot(3) = var(9);
+    var_dot(4) = var(10);
+    var_dot(5) = var(11);
+    var_dot(6) = var(12);
+    var_dot(7) = -g * var(5);
+    var_dot(8) = g * var(4);
+    A_mat = [-1 -1 -1 -1; -d/sqrt(2) -d/sqrt(2) d/sqrt(2) d/sqrt(2); d/sqrt(2) -d/sqrt(2) -d/sqrt(2) d/sqrt(2); km -km km -km];
+    cont_vec = A_mat * [deltaFc; deltaGc];
+    var_dot(9) = cont_vec(1) / m;
+    var_dot(10) = cont_vec(2) / I(1,1);
+    var_dot(11) = cont_vec(3) / I(2,2);
+    var_dot(12) = cont_vec(4) / I(3,3);
+end
+
+function [Fc, Gc] = RotationDerivativeFeedback(var, m, g)
+    Fc = m * g;
+
+    p = var(10);
+    q = var(11);
+    r = var(12);
+
+    Kd = 0.004; 
+    L = -Kd * p; 
+    M = -Kd * q; 
+    N = -Kd * r; 
+
+    Gc = [L; M; N];
+end
+
+function motor_forces = ComputeMotorForces(Fc, Gc, d, km)
+    A_mat = [-1 -1 -1 -1; -d/sqrt(2) -d/sqrt(2) d/sqrt(2) d/sqrt(2); d/sqrt(2) -d/sqrt(2) -d/sqrt(2) d/sqrt(2); km -km km -km];
+    A_mat_inv = A_mat^-1;
+    motor_forces = A_mat_inv * [Fc(3); Gc]
+end
+
+function var_dot = QuadrotorEOMwithRateFeedback(t, var, g, m, I, nu, mu)
+
 end
