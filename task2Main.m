@@ -2,6 +2,8 @@ clc;
 clear;
 close all;
 
+
+
 m = 0.068; % kg
 d = 0.06; % m
 km = 0.0024; % Nm/N
@@ -55,7 +57,16 @@ cont_vec_U5 = A_mat * motor_forces_U5;
 
 PlotAircraftSim(t_U5, var_U5', cont_vec_U5, [1 2 3 4 5 6], 'g-'); 
 
-% Define the 6 deviations
+trim_titles = {'Inertial Position', 'Euler Angles', 'Body Frame Velocities', 'Angular Rates', '3D Trajectory'};
+for f = 1:5
+    figure(f);
+    sgtitle('Prob 1.2 & 1.4: Trim State Validations', 'FontSize', 14, 'FontWeight', 'bold');
+    if f < 5
+        subplot(3,1,1);
+        legend('Hover', '5 m/s Lateral', '5 m/s Forward', 'Location', 'best');
+    end
+end
+
 deviations = zeros(6, 12);
 deviations(1, 4)  = 5 * pi/180;    % a) +5 deg roll
 deviations(2, 5)  = 5 * pi/180;    % b) +5 deg pitch
@@ -64,75 +75,73 @@ deviations(4, 10) = 0.1;           % d) +0.1 rad/s roll rate
 deviations(5, 11) = 0.1;           % e) +0.1 rad/s pitch rate
 deviations(6, 12) = 0.1;           % f) +0.1 rad/s yaw rate
 
-titles = {'Roll Dev', 'Pitch Dev', 'Yaw Dev', 'p Dev', 'q Dev', 'r Dev'};
+titles = {'Roll', 'Pitch', 'Yaw', 'Roll Rate (p)', 'Pitch Rate (q)', 'Yaw Rate (r)'};
+dev_amounts = {'+5 deg', '+5 deg', '+5 deg', '+0.1 rad/s', '+0.1 rad/s', '+0.1 rad/s'};
 
 for i = 1:6
-    % Initial Condition: Hover + Deviation
     var_init = zeros(12, 1) + deviations(i, :)';
-    
-    % Simulate (using hover motor forces)
     [t, var] = ode45(@(t, var) QuadrotorEOM(t, var, g, m, I, d, km, nu, mu, motor_forces), [0 10], var_init);
-    
-    % Plot (Use a unique figure set for each deviation)
-    fig_offsets = (i-1)*6 + [1:6]; 
+    fig_offsets = 10 + (i-1)*6 + [1:6]; 
     PlotAircraftSim(t, var', cont_vec_hover, fig_offsets, 'b-');
-    sgtitle(titles{i}); % Add a title to identify which simulation is which
+    for f = 1:5
+        figure(fig_offsets(f));
+        sgtitle(sprintf('Prob 2.1: Uncontrolled Deviation %s in %s', dev_amounts{i}, titles{i}), 'FontSize', 14, 'FontWeight', 'bold');  
+    end
 end
 
-%% Plots Task 2.5
-% Make a deviations matrix 
-rate_deviations = zeros(3, 12);
-rate_deviations(1, 10) = 0.1;   % d) roll rate
-rate_deviations(2, 11) = 0.1;   % e) pitch rate
-rate_deviations(3, 12) = 0.1;   % f) yaw rate
 
-rate_titles  = {'d: +0.1 rad/s Roll Rate', ...
-                'e: +0.1 rad/s Pitch Rate', ...
-                'f: +0.1 rad/s Yaw Rate'};
 
-for i = 1:3
-    var_init = rate_deviations(i, :)';
-    fig_base = 100 + (i-1)*6; %figures for part 2.5 will be 100-117
-    fig_offsets = fig_base + (0:4);
+rate_dev_indices = [10, 11, 12];
+rate_dev_names = {'Roll Rate (p)', 'Pitch Rate (q)', 'Yaw Rate (r)'};
 
-    % Uncontrolled
-    [t_unc, var_unc] = ode45( ...
-        @(t,x) QuadrotorEOM(t, x, g, m, I, d, km, nu, mu, motor_forces), ...
-        t_span, var_init);
-    cont_vec_unc = repmat(cont_vec_hover, 1, length(t_unc));  % constant
-    PlotAircraftSim(t_unc, var_unc', cont_vec_unc, fig_offsets, 'b-');
-
-    %controlled 
-    [t_con, var_con] = ode45( ...
-        @(t,x) QuadrotorEOMwithRateFeedback(t, x, g, m, I, nu, mu), ...
-        t_span, var_init);
-
-    % Control inputs for each time step
-    cont_vec_con = zeros(4, length(t_con));
-    for k = 1:length(t_con)
-        [Fc_k, Gc_k] = RotationDerivativeFeedback(var_con(k,:)', m, g);
-        mf_k = ComputeMotorForces(Fc_k, Gc_k, d, km);
-        A_mat = [-1 -1 -1 -1;
-                 -d/sqrt(2) -d/sqrt(2)  d/sqrt(2)  d/sqrt(2);
-                  d/sqrt(2) -d/sqrt(2) -d/sqrt(2)  d/sqrt(2);
-                  km        -km         km         -km];
-        cont_vec_con(:,k) = A_mat * mf_k;
+for i = 1:3    
+    var_init = zeros(12, 1);
+    var_init(rate_dev_indices(i)) = 0.1; 
+    
+    % Simulate Uncontrolled System
+    [t_un, var_un] = ode45(@(t, var) QuadrotorEOM(t, var, g, m, I, d, km, nu, mu, motor_forces), t_span, var_init);
+    thrusts_un = repmat(motor_forces, 1, length(t_un));
+    cont_vec_un = A_mat * thrusts_un;
+    
+    % Simulate Controlled System
+    [t_c, var_c] = ode45(@(t, var) QuadrotorEOMwithRateFeedback(t, var, g, m, I, nu, mu), t_span, var_init);
+    thrusts_c = zeros(4, length(t_c));
+    cont_vec_c = zeros(4, length(t_c));
+    for k = 1:length(t_c)
+        state_k = var_c(k, :)';
+        [Fc_k, Gc_k] = RotationDerivativeFeedback(state_k, m, g);
+        thrusts_c(:, k) = ComputeMotorForces(Fc_k, Gc_k, d, km);
+        cont_vec_c(:, k) = [Fc_k(3); Gc_k]; 
     end
-
-    PlotAircraftSim(t_con, var_con', cont_vec_con, fig_offsets, 'r-');
-
-    % Label figures
-    for fig_n = fig_offsets
-        figure(fig_n);
-        sgtitle(['2.5 ' rate_titles{i}]);
+    
+    % 3. Plotting Overlays (Grouped in 110s, 120s, 130s)
+    fig_base = 100 + (i * 10); 
+    fig_offsets = fig_base + [1:6];
+    
+    PlotAircraftSim(t_un, var_un', cont_vec_un, fig_offsets, 'r--');
+    PlotAircraftSim(t_c, var_c', cont_vec_c, fig_offsets, 'b-');
+    
+    for f = 1:5
+        figure(fig_offsets(f));
+        sgtitle(sprintf('Prob 2.5: Controller Overlay (+0.1 rad/s in %s)', rate_dev_names{i}), 'FontSize', 14, 'FontWeight', 'bold');
+        subplot(3,1,1); legend('Uncontrolled', 'Controlled', 'Location', 'best');
     end
-
-    % legend
-    figure(fig_base);
-    subplot(3,1,1);
-    legend('Uncontrolled','Controlled','Location','best');
+    
+    % Plot Motor Thrusts
+    figure(fig_base + 7); hold on; grid on; box on;
+    sgtitle(sprintf('Prob 2.5: Motor Thrusts (+0.1 rad/s in %s)', rate_dev_names{i}), 'FontSize', 14, 'FontWeight', 'bold');
+    for motor = 1:4
+        subplot(2, 2, motor); hold on; grid on; box on;
+        plot(t_un, thrusts_un(motor, :), 'r--', 'LineWidth', 1.5);
+        plot(t_c, thrusts_c(motor, :), 'b-', 'LineWidth', 1.5);
+        title(sprintf('Motor %d', motor));
+        xlabel('Time (s)'); ylabel('Thrust (N)');
+        if motor == 1
+            legend('Uncontrolled', 'Controlled', 'Location', 'best');
+        end
+    end
 end
-%% Task 1.1
+
 
 function PlotAircraftSim(time, aircraft_state_array, control_input_array, fig, col)
     figure(fig(1));
@@ -241,7 +250,7 @@ function PlotAircraftSim(time, aircraft_state_array, control_input_array, fig, c
     axis equal; 
     xlabel('X (m)'); ylabel('Y (m)'); zlabel('Z (m)');
 end
-%% Task 1.2
+
 function var_dot = QuadrotorEOM(t, var, g, m, I, d, km, nu, mu, motor_forces)
     ignore_drag = 0;
     phi = var(4); 
@@ -253,10 +262,7 @@ function var_dot = QuadrotorEOM(t, var, g, m, I, d, km, nu, mu, motor_forces)
     p = var(10); 
     q = var(11); 
     r = var(12);
-    % replacing R = eul2rotm([psi, theta, phi], "ZYX");'
-    R = [cos(psi)*cos(theta),  cos(psi)*sin(theta)*sin(phi) - sin(psi)*cos(phi),  cos(psi)*sin(theta)*cos(phi) + sin(psi)*sin(phi);
-     sin(psi)*cos(theta),  sin(psi)*sin(theta)*sin(phi) + cos(psi)*cos(phi),  sin(psi)*sin(theta)*cos(phi) - cos(psi)*sin(phi);
-     -sin(theta),           cos(theta)*sin(phi), cos(theta)*cos(phi)];
+    R = eul2rotm([psi, theta, phi], "ZYX");
     x_1_dot = R * [u; v; w];
     x_2_dot = [1 sin(phi)*tan(theta) cos(phi)*tan(theta); 0 cos(phi) -sin(phi); 0 sin(phi)*sec(theta) cos(phi)*sec(theta)] * [p; q; r];
     A_mat = [-1 -1 -1 -1; -d/sqrt(2) -d/sqrt(2) d/sqrt(2) d/sqrt(2); d/sqrt(2) -d/sqrt(2) -d/sqrt(2) d/sqrt(2); km -km km -km];
@@ -270,7 +276,7 @@ function var_dot = QuadrotorEOM(t, var, g, m, I, d, km, nu, mu, motor_forces)
     end
     var_dot = [x_1_dot; x_2_dot; x_3_dot; x_4_dot];
 end
-%% Task 2.2
+
 function var_dot = QuadrotorEOM_Linearized(t, var, g, m, I, deltaFc, deltaGc)    
     var_dot = zeros(12, 1);
     var_dot(1) = var(7);
@@ -288,9 +294,9 @@ function var_dot = QuadrotorEOM_Linearized(t, var, g, m, I, deltaFc, deltaGc)
     var_dot(11) = cont_vec(3) / I(2,2);
     var_dot(12) = cont_vec(4) / I(3,3);
 end
-%% Task 2.3
+
 function [Fc, Gc] = RotationDerivativeFeedback(var, m, g)
-    Fc = m * g;
+    Fc = [0 0 m*g];
 
     p = var(10);
     q = var(11);
@@ -303,23 +309,18 @@ function [Fc, Gc] = RotationDerivativeFeedback(var, m, g)
 
     Gc = [L; M; N];
 end
-%% task 2.4
+
 function motor_forces = ComputeMotorForces(Fc, Gc, d, km)
     A_mat = [-1 -1 -1 -1; -d/sqrt(2) -d/sqrt(2) d/sqrt(2) d/sqrt(2); d/sqrt(2) -d/sqrt(2) -d/sqrt(2) d/sqrt(2); km -km km -km];
     A_mat_inv = A_mat^-1;
-    motor_forces = A_mat_inv * [Fc; Gc];
+    motor_forces = A_mat_inv * [Fc(3); Gc];
 end
 
-%% task 2.5
 function var_dot = QuadrotorEOMwithRateFeedback(t, var, g, m, I, nu, mu)
-   d = 0.06; % m
-   km = 0.0024; % Nm/N
-    % Feedback control
+    ignore_drag = 0;
+    d = 0.06; % m
+    km = 0.0024; % Nm/N
     [Fc, Gc] = RotationDerivativeFeedback(var, m, g);
     motor_forces = ComputeMotorForces(Fc, Gc, d, km);
-
-    % Reuse from task 1 var_dot
     var_dot = QuadrotorEOM(t, var, g, m, I, d, km, nu, mu, motor_forces);
 end
-
-% plotting for task 2.5 
