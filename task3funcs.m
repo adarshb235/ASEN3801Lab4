@@ -67,35 +67,35 @@ tspan = [0 10]; % 10 sec simulation window
 % a. Deviation by +5 deg in roll
 var0_a = zeros(12, 1);
 var0_a(4) = deg2rad(5);
-[t_a, var_a] = ode45(@(t, var) ClosedLoop_QuadrotorEOM_Linearized(t, var), tspan, var0_a);
+[t_a, var_a] = ode45(@(t, var) ClosedLoop_QuadrotorEOM_Linearized(t, var, g, m, I), tspan, var0_a);
 % a plot
 figure()
-plot(t_a, var_a(:,4))
+plot(t_a, rad2deg(var_a(:,4)))
 hold on
 grid on
 title('a. Deviation by +5 deg in roll')
 xlabel('Time (s)')
-ylabel('Roll Angle (rad)')
+ylabel('Roll Angle (deg)')
 hold off
 
 % b. Deviation by +5 deg in pitch
 var0_b = zeros(12, 1);
 var0_b(5) = deg2rad(5);
-[t_b, var_b] = ode45(@(t, var) ClosedLoop_QuadrotorEOM_Linearized(t, var), tspan, var0_b);
+[t_b, var_b] = ode45(@(t, var) ClosedLoop_QuadrotorEOM_Linearized(t, var, g, m, I), tspan, var0_b);
 % b plot
 figure()
-plot(t_b, var_b(:,5))
+plot(t_b, rad2deg(var_b(:,5)))
 hold on
 grid on
 title('b. Deviation by +5 deg in pitch')
 xlabel('Time (s)')
-ylabel('Pitch Angle (rad)')
+ylabel('Pitch Angle (deg)')
 hold off
 
 % c. Deviation by +0.1 rad/sec in roll rate
 var0_c = zeros(12, 1);
 var0_c(10) = 0.1;
-[t_c, var_c] = ode45(@(t, var) ClosedLoop_QuadrotorEOM_Linearized(t, var), tspan, var0_c);
+[t_c, var_c] = ode45(@(t, var) ClosedLoop_QuadrotorEOM_Linearized(t, var, g, m, I), tspan, var0_c);
 % c plot
 figure()
 plot(t_c, var_c(:,10))
@@ -108,7 +108,7 @@ hold off
 % d. Deviation by +0.1 rad/sec in pitch rate
 var0_d = zeros(12, 1);
 var0_d(11) = 0.1;
-[t_d, var_d] = ode45(@(t, var) ClosedLoop_QuadrotorEOM_Linearized(t, var), tspan, var0_d);
+[t_d, var_d] = ode45(@(t, var) ClosedLoop_QuadrotorEOM_Linearized(t, var, g, m, I), tspan, var0_d);
 % d plot
 figure()
 plot(t_d, var_d(:,11))
@@ -136,6 +136,9 @@ function [Fc, Gc] = InnerLoopFeedback(var)
 % eigenvalues
 lambda1 = -2; % rad/s (-1/0.5s)
 lambda2 = -20; % rad/s (dominate lambda1)
+
+Ix = 5.8e-5;
+Iy = 7.2e-5;
 
 % Lateral gains (roll x)
 K2_lat = Ix*(lambda1 * lambda2);
@@ -188,6 +191,8 @@ function var_dot = ClosedLoop_QuadrotorEOM_Linearized(t, var, g, m, I)
 % deltaFc and deltaGc are deviations from the steady hover trim condition
 % Fc = [Xc, Yc, Zc], Gc = [Lc, Mc, Nc]
 % var =     [dx; dy; dz; dphi; dtheta; dpsi; du; dv; dw; dp; dq; dr]
+
+var_dot = zeros(12, 1);
 
 % calculate delta Fc and Gc from func
 [Fc, Gc] = InnerLoopFeedback(var);
