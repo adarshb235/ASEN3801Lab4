@@ -44,12 +44,12 @@ cont_vec_V5_array = repmat(cont_vec_V5, 1, length(t_V5));
 PlotAircraftSim(t_V5, var_V5', cont_vec_V5_array, [1 2 3 4 5 6], 'r--');
 
 psi_trim_U5 = pi/2;   
-v_inertial = 5; % m/s East
-u_trim_U5 = 5;                  
-theta_trim_U5 = -asin((nu * u_trim_U5) / (m * g)); 
-phi_trim_U5 = 0;  
-u_trim_U5 = v_inertial * cos(theta_trim_U5);
-w_trim_U5 = v_inertial * sin(theta_trim_U5);
+v_inertial_U5 = 5; 
+phi_trim_U5 = 0; 
+theta_trim_U5 = -asin((nu * v_inertial_U5) / (m * g)); 
+u_trim_U5 = v_inertial_U5 * cos(theta_trim_U5);
+w_trim_U5 = v_inertial_U5 * sin(theta_trim_U5);
+
 
 f_trim_U5 = (m * g) / (4 * cos(theta_trim_U5));
 motor_forces_U5 = [f_trim_U5; f_trim_U5; f_trim_U5; f_trim_U5];
@@ -61,17 +61,24 @@ var_U5(abs(var_U5) < 5e-10) = 0;
 cont_vec_U5 = A_mat * motor_forces_U5;
 cont_vec_U5_array = repmat(cont_vec_U5, 1, length(t_U5));
 
-PlotAircraftSim(t_U5, var_U5', cont_vec_U5_array, [1 2 3 4 5 6], 'go-');
+PlotAircraftSim(t_U5, var_U5', cont_vec_U5_array, [1 2 3 4 5 6], 'g:');
 
 trim_titles = {'Inertial Position', 'Euler Angles', 'Body Frame Velocities', 'Angular Rates', '3D Trajectory'};
-for f = 1:5
+for f = 1:6
     figure(f);
     sgtitle('Prob 1.2 & 1.4: Trim State Validations', 'FontSize', 14, 'FontWeight', 'bold');
-    if f < 5
-        subplot(3,1,1);
-        legend('Hover', '5 m/s Lateral', '5 m/s Forward', 'Location', 'best');
+    if f ~= 5    
+        if f == 6
+            subplot(4,1,1);
+        else
+            subplot(3,1,1);
+        end
+        legend('Hover', '5 m/s (Yaw 0)', '5 m/s (Yaw 90)', 'Location', 'best');
+    else
+        legend('Hover', 'Start', 'End', '5 m/s (Yaw 0)', 'Start', 'End', '5 m/s (Yaw 90)', 'Start', 'End', 'Location', 'best');
     end
 end
+
 
 deviations = zeros(6, 12);
 deviations(1, 4)  = 5 * pi/180;    % a) +5 deg roll
@@ -96,7 +103,7 @@ for i = 1:6
     cont_vec_nl_array = repmat(cont_vec_hover, 1, length(t_nl));  
     cont_vec_l_array = repmat(cont_vec_hover, 1, length(t_l)); 
 
-    PlotAircraftSim(t_nl, var_nl', cont_vec_nl_array, fig_offsets, 'b-');
+    PlotAircraftSim(t_nl, var_nl', cont_vec_nl_array, fig_offsets, 'b.-');
     PlotAircraftSim(t_l, var_l', cont_vec_l_array, fig_offsets, 'r--');
 
     for f = 1:6
