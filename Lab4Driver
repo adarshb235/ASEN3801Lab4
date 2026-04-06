@@ -116,7 +116,7 @@ for i = 1:6
             end
             legend('Nonlinear', 'Linear', 'Location', 'best');
         else
-            legend('Nonlinear', 'End', 'Start', 'Linear', 'End', 'Start', 'Location', 'best');
+            legend('Nonlinear', 'End', 'Start', 'Linear', 'End', 'End', 'Location', 'best');
         end
     end
 end
