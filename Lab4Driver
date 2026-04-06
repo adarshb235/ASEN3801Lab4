@@ -17,16 +17,16 @@ I = [Ix 0 0; 0 Iy 0; 0 0 Iz]; % Inertia matrix
 f_trim = m * g / 4;
 motor_forces = [f_trim; f_trim; f_trim; f_trim];
 t_span = [0 10];
-var_init_hover = zeros(12, 1);
-[t_hover, var_hover] = ode45(@(t_hover, var_hover) QuadrotorEOM(t_hover, var_hover, g, m, I, d, km, nu, mu, motor_forces), t_span, var_init_hover);
+var_init_hover = zeros(12, 1); %initial state vector for hover
+[t_hover, var_hover] = ode45(@(t_hover, var_hover) QuadrotorEOM(t_hover, var_hover, g, m, I, d, km, nu, mu, motor_forces), t_span, var_init_hover); % when checking 1.2, go to the function and change ignore_drag to 1. if 1.3, leave ignore_drag = 0 
 A_mat = [-1 -1 -1 -1; -d/sqrt(2) -d/sqrt(2) d/sqrt(2) d/sqrt(2); d/sqrt(2) -d/sqrt(2) -d/sqrt(2) d/sqrt(2); km -km km -km];
 cont_vec_hover = A_mat * motor_forces;
-var_hover(abs(var_hover) < 1e-10) = 0;
+var_hover(abs(var_hover) < 1e-8) = 0;
 cont_vec_hover_array = repmat(cont_vec_hover, 1, length(t_hover)); 
 
-PlotAircraftSim(t_hover, var_hover', cont_vec_hover_array, [1 2 3 4 5 6], 'b.-');
+PlotAircraftSim(t_hover, var_hover', cont_vec_hover_array, [1 2 3 4 5 6], 'b.-'); % plot hover characteristics for 1.2/1.3
 
-v_trim_V5 = 5; 
+v_trim_V5 = 5; % create initial state vector for constant translation east
 phi_trim_V5 = asin((nu * v_trim_V5) / (m * g));
 theta_trim_V5 = 0;
 psi_trim_V5 = 0;
@@ -34,16 +34,16 @@ var_init_V5 = zeros(12, 1);
 var_init_V5(4) = phi_trim_V5;                
 var_init_V5(8) = 5 * cos(phi_trim_V5);        
 var_init_V5(9) = -5 * sin(phi_trim_V5);  
-f_trim_V5 = m * g / cos(phi_trim_V5)/ 4;
+f_trim_V5 = m * g / (4 * cos(phi_trim_V5));
 motor_forces_V5 = [f_trim_V5; f_trim_V5; f_trim_V5; f_trim_V5];
 cont_vec_V5 = A_mat * motor_forces_V5;
 [t_V5, var_V5] = ode45(@(t_V5, var_V5) QuadrotorEOM(t_V5, var_V5, g, m, I, d, km, nu, mu, motor_forces_V5), t_span, var_init_V5);
-var_V5(abs(var_V5) < 1e-10) = 0;
+var_V5(abs(var_V5) < 1e-8) = 0;
 cont_vec_V5_array = repmat(cont_vec_V5, 1, length(t_V5)); 
 
-PlotAircraftSim(t_V5, var_V5', cont_vec_V5_array, [1 2 3 4 5 6], 'r--');
+PlotAircraftSim(t_V5, var_V5', cont_vec_V5_array, [1 2 3 4 5 6], 'r--'); % add plot for 1.4a
 
-psi_trim_U5 = pi/2;   
+psi_trim_U5 = pi/2;   % create initial state vector for constant translation east + yaw 
 v_inertial_U5 = 5; 
 phi_trim_U5 = 0; 
 theta_trim_U5 = -asin((nu * v_inertial_U5) / (m * g)); 
@@ -57,16 +57,16 @@ motor_forces_U5 = [f_trim_U5; f_trim_U5; f_trim_U5; f_trim_U5];
 var_init_U5 = [0; 0; 0; phi_trim_U5; theta_trim_U5; psi_trim_U5; u_trim_U5; 0; w_trim_U5; 0; 0; 0];
 
 [t_U5, var_U5] = ode45(@(t_U5, var_U5) QuadrotorEOM(t_U5, var_U5, g, m, I, d, km, nu, mu, motor_forces_U5), t_span, var_init_U5);
-var_U5(abs(var_U5) < 5e-10) = 0;  
+var_U5(abs(var_U5) < 1e-8) = 0;  
 cont_vec_U5 = A_mat * motor_forces_U5;
 cont_vec_U5_array = repmat(cont_vec_U5, 1, length(t_U5));
 
-PlotAircraftSim(t_U5, var_U5', cont_vec_U5_array, [1 2 3 4 5 6], 'g:');
+PlotAircraftSim(t_U5, var_U5', cont_vec_U5_array, [1 2 3 4 5 6], 'g:'); % add plot for 1.4b
 
-trim_titles = {'Inertial Position', 'Euler Angles', 'Body Frame Velocities', 'Angular Rates', '3D Trajectory'};
+trim_titles = {'Inertial Position', 'Euler Angles', 'Body Frame Velocities', 'Angular Rates', '3D Trajectory', 'Control Inputs'};
 for f = 1:6
     figure(f);
-    sgtitle('Prob 1.2 & 1.4: Trim State Validations', 'FontSize', 14, 'FontWeight', 'bold');
+    sgtitle('Prob 1.2/1.3 & 1.4: Trim State Validations', 'FontSize', 14, 'FontWeight', 'bold');
     if f ~= 5    
         if f == 6
             subplot(4,1,1);
@@ -75,41 +75,39 @@ for f = 1:6
         end
         legend('Hover', '5 m/s (Yaw 0)', '5 m/s (Yaw 90)', 'Location', 'best');
     else
-        legend('Hover', 'Start', 'End', '5 m/s (Yaw 0)', 'Start', 'End', '5 m/s (Yaw 90)', 'Start', 'End', 'Location', 'best');
+        legend('Hover', 'End', 'Start', '5 m/s (Yaw 0)', 'End', 'Start', '5 m/s (Yaw 90)', 'End', 'Start', 'Location', 'best');
     end
 end
 
 
-deviations = zeros(6, 12);
-deviations(1, 4)  = 5 * pi/180;    % a) +5 deg roll
-deviations(2, 5)  = 5 * pi/180;    % b) +5 deg pitch
-deviations(3, 6)  = 5 * pi/180;    % c) +5 deg yaw
-deviations(4, 10) = 0.1;           % d) +0.1 rad/s roll rate
-deviations(5, 11) = 0.1;           % e) +0.1 rad/s pitch rate
-deviations(6, 12) = 0.1;           % f) +0.1 rad/s yaw rate
+deviations = zeros(12, 6);
+deviations(4, 1)  = 5 * pi/180;    % +5 deg roll
+deviations(5, 2)  = 5 * pi/180;    % +5 deg pitch
+deviations(6, 3)  = 5 * pi/180;    % +5 deg yaw
+deviations(10, 4) = 0.1;           % +0.1 rad/s roll rate
+deviations(11, 5) = 0.1;           % +0.1 rad/s pitch rate
+deviations(12, 6) = 0.1;           % +0.1 rad/s yaw rate
 
 titles = {'Roll', 'Pitch', 'Yaw', 'Roll Rate (p)', 'Pitch Rate (q)', 'Yaw Rate (r)'};
 dev_amounts = {'+5 deg', '+5 deg', '+5 deg', '+0.1 rad/s', '+0.1 rad/s', '+0.1 rad/s'};
 
 for i = 1:6
-    var_init = zeros(12, 1) + deviations(i, :)';
+    var_init_dev = zeros(12, 1) + deviations(:, i);
     fig_offsets = 10 + (i-1)*6 + [1:6]; 
     
-    [t_nl, var_nl] = ode45(@(t, var) QuadrotorEOM(t, var, g, m, I, d, km, nu, mu, motor_forces), [0 10], var_init);
-
-    [t_l, var_l] = ode45(@(t, var) QuadrotorEOM_Linearized(t, var, g, m, I, 0, [0; 0; 0]), [0 10], var_init);
+    [t_nl, var_nl] = ode45(@(t, var) QuadrotorEOM(t, var, g, m, I, d, km, nu, mu, motor_forces), [0 10], var_init_dev);
+    [t_l, var_l] = ode45(@(t, var) QuadrotorEOM_Linearized(t, var, g, m, I, 0, [0; 0; 0]), [0 10], var_init_dev);
 
 
     cont_vec_nl_array = repmat(cont_vec_hover, 1, length(t_nl));  
     cont_vec_l_array = repmat(cont_vec_hover, 1, length(t_l)); 
 
-    PlotAircraftSim(t_nl, var_nl', cont_vec_nl_array, fig_offsets, 'b.-');
+    PlotAircraftSim(t_nl, var_nl', cont_vec_nl_array, fig_offsets, 'b.-'); % plot linear and nonlinear response for 2.2
     PlotAircraftSim(t_l, var_l', cont_vec_l_array, fig_offsets, 'r--');
 
     for f = 1:6
         figure(fig_offsets(f));
         sgtitle(sprintf('Prob 2.1 & 2.2: Nonlinear vs Linear Deviation %s in %s', dev_amounts{i}, titles{i}), 'FontSize', 14, 'FontWeight', 'bold');
-
         if f ~= 5
             if f == 6
                 subplot(4,1,1);
@@ -118,7 +116,7 @@ for i = 1:6
             end
             legend('Nonlinear', 'Linear', 'Location', 'best');
         else
-            legend('Nonlinear', 'Start', 'End', 'Linear', 'Start', 'End', 'Location', 'best');
+            legend('Nonlinear', 'End', 'Start', 'Linear', 'End', 'Start', 'Location', 'best');
         end
     end
 end
@@ -132,11 +130,14 @@ for i = 1:3
     var_init = zeros(12, 1);
     var_init(rate_dev_indices(i)) = 0.1; 
     
-    [t_un, var_un] = ode45(@(t, var) QuadrotorEOM(t, var, g, m, I, d, km, nu, mu, motor_forces), t_span, var_init);
+    [t_un, var_un] = ode45(@(t, var) QuadrotorEOM(t, var, g, m, I, d, km, nu, mu, motor_forces), t_span, var_init); % uncontrolled for 2.5
+    var_un(abs(var_un) < 1e-8) = 0;  
     thrusts_un = repmat(motor_forces, 1, length(t_un));
     cont_vec_un = A_mat * thrusts_un;
     
-    [t_c, var_c] = ode45(@(t, var) QuadrotorEOMwithRateFeedback(t, var, g, m, I, nu, mu), t_span, var_init);
+    
+    [t_c, var_c] = ode45(@(t, var) QuadrotorEOMwithRateFeedback(t, var, g, m, I, nu, mu), t_span, var_init); % controlled for 2.5
+    var_c(abs(var_c) < 1e-8) = 0;  
     thrusts_c = zeros(4, length(t_c));
     cont_vec_c = zeros(4, length(t_c));
     for k = 1:length(t_c)
@@ -149,8 +150,8 @@ for i = 1:3
     fig_base = 100 + (i * 10); 
     fig_offsets = fig_base + [1:6];
     
-    PlotAircraftSim(t_un, var_un', cont_vec_un, fig_offsets, 'r--');
-    PlotAircraftSim(t_c, var_c', cont_vec_c, fig_offsets, 'b-');
+    PlotAircraftSim(t_un, var_un', cont_vec_un, fig_offsets, 'r--'); % plot
+    PlotAircraftSim(t_c, var_c', cont_vec_c, fig_offsets, 'b:');
     
    for f = 1:6
         figure(fig_offsets(f));
@@ -164,7 +165,7 @@ for i = 1:3
             end
             legend('Uncontrolled', 'Controlled', 'Location', 'best');
         else
-            legend('Uncontrolled', 'Start', 'End', 'Controlled', 'Start', 'End', 'Location', 'best');
+            legend('Uncontrolled', 'End', 'Start', 'Controlled', 'End', 'Start', 'Location', 'best');
         end
     end
     
@@ -173,7 +174,7 @@ for i = 1:3
     for motor = 1:4
         subplot(2, 2, motor); hold on; grid on; box on;
         plot(t_un, thrusts_un(motor, :), 'r--', 'LineWidth', 1.5);
-        plot(t_c, thrusts_c(motor, :), 'b-', 'LineWidth', 1.5);
+        plot(t_c, thrusts_c(motor, :), 'b:', 'LineWidth', 1.5);
         title(sprintf('Motor %d', motor));
         xlabel('Time (s)'); ylabel('Thrust (N)');
         if motor == 1
@@ -184,7 +185,7 @@ end
 
 
 function PlotAircraftSim(time, aircraft_state_array, control_input_array, fig, col)
-    figure(fig(1));
+    figure(fig(1)); % inertial position plot
     hold on;
     subplot(3, 1, 1)
     hold on;
@@ -192,23 +193,23 @@ function PlotAircraftSim(time, aircraft_state_array, control_input_array, fig, c
     box on;
     xlabel("Time (s)")
     ylabel("Inertial X Position (m)")
-    plot(time, aircraft_state_array(1,:), col);
+    plot(time, aircraft_state_array(1,:), col, 'LineWidth', 1.5);
     subplot(3, 1, 2)
     hold on;
     grid on;
     box on;
     xlabel("Time (s)")
     ylabel("Inertial Y Position (m)")
-    plot(time, aircraft_state_array(2,:), col);
+    plot(time, aircraft_state_array(2,:), col, 'LineWidth', 1.5);
     subplot(3, 1, 3)
     hold on;
     grid on;
     box on;
     xlabel("Time (s)")
     ylabel("Inertial Z Position (m)")
-    plot(time, aircraft_state_array(3,:), col);
+    plot(time, aircraft_state_array(3,:), col, 'LineWidth', 1.5);
 
-    figure(fig(2));
+    figure(fig(2)); % euler angle plot
     hold on;
     subplot(3, 1, 1)
     hold on;
@@ -216,23 +217,23 @@ function PlotAircraftSim(time, aircraft_state_array, control_input_array, fig, c
     box on;
     xlabel("Time (s)")
     ylabel("Roll Angle (rad)")
-    plot(time, aircraft_state_array(4,:), col);
+    plot(time, aircraft_state_array(4,:), col, 'LineWidth', 1.5);
     subplot(3, 1, 2)
     hold on;
     grid on;
     box on;
     xlabel("Time (s)")
     ylabel("Pitch Angle (rad)")
-    plot(time, aircraft_state_array(5,:), col);
+    plot(time, aircraft_state_array(5,:), col, 'LineWidth', 1.5);
     subplot(3, 1, 3)
     hold on;
     grid on;
     box on;
     xlabel("Time (s)")
     ylabel("Yaw Angle (rad)")
-    plot(time, aircraft_state_array(6,:), col);
+    plot(time, aircraft_state_array(6,:), col, 'LineWidth', 1.5);
 
-    figure(fig(3));
+    figure(fig(3)); % body frame velocity plots
     hold on;
     subplot(3, 1, 1)
     hold on;
@@ -240,23 +241,23 @@ function PlotAircraftSim(time, aircraft_state_array, control_input_array, fig, c
     box on;
     xlabel("Time (s)")
     ylabel("Body Frame X Velocity (m/s)")
-    plot(time, aircraft_state_array(7,:), col);
+    plot(time, aircraft_state_array(7,:), col, 'LineWidth', 1.5);
     subplot(3, 1, 2)
     hold on;
     grid on;
     box on;
     xlabel("Time (s)")
     ylabel("Body Frame Y Velocity (m/s)")
-    plot(time, aircraft_state_array(8,:), col);
+    plot(time, aircraft_state_array(8,:), col, 'LineWidth', 1.5);
     subplot(3, 1, 3)
     hold on;
     grid on;
     box on;
     xlabel("Time (s)")
     ylabel("Body Frame Z Velocity (m/s)")
-    plot(time, aircraft_state_array(9,:), col);
+    plot(time, aircraft_state_array(9,:), col, 'LineWidth', 1.5);
 
-    figure(fig(4));
+    figure(fig(4)); % angular velocity plots
     hold on;
     subplot(3, 1, 1)
     hold on;
@@ -264,34 +265,33 @@ function PlotAircraftSim(time, aircraft_state_array, control_input_array, fig, c
     box on;
     xlabel("Time (s)")
     ylabel("Roll Rate (rad/s)")
-    plot(time, aircraft_state_array(10,:), col);
+    plot(time, aircraft_state_array(10,:), col, 'LineWidth', 1.5);
     subplot(3, 1, 2)
     hold on;
     grid on;
     box on;
     xlabel("Time (s)")
     ylabel("Pitch Rate (rad/s)")
-    plot(time, aircraft_state_array(11,:), col);
+    plot(time, aircraft_state_array(11,:), col, 'LineWidth', 1.5);
     subplot(3, 1, 3)
     hold on;
     grid on;
     box on;
     xlabel("Time (s)")
     ylabel("Yaw Rate (rad/s)")
-    plot(time, aircraft_state_array(12,:), col);
+    plot(time, aircraft_state_array(12,:), col, 'LineWidth', 1.5);
 
     
-    figure(fig(5));
+    figure(fig(5)); % trajectory plot
     hold on; grid on; box on;
-    plot3(aircraft_state_array(1,:), aircraft_state_array(2,:), -aircraft_state_array(3,:), col, 'LineWidth', 1.5);
-    plot3(aircraft_state_array(1,1), aircraft_state_array(2,1), -aircraft_state_array(3,1), 'go', 'MarkerFaceColor', 'g');
-    plot3(aircraft_state_array(1,end), aircraft_state_array(2,end), -aircraft_state_array(3,end), 'ro', 'MarkerFaceColor', 'r');
+    h = plot3(aircraft_state_array(1,:), aircraft_state_array(2,:), -aircraft_state_array(3,:), col, 'LineWidth', 1.5);
+    lineColor = get(h, 'Color');
+    plot3(aircraft_state_array(1,end), aircraft_state_array(2,end), -aircraft_state_array(3,end), 's', 'MarkerEdgeColor', lineColor, 'MarkerFaceColor', 'none', 'LineWidth', 2, 'MarkerSize', 10);
+    plot3(aircraft_state_array(1,1), aircraft_state_array(2,1), -aircraft_state_array(3,1), 'o', 'MarkerEdgeColor', lineColor, 'MarkerFaceColor', lineColor, 'MarkerSize', 8);
     view(45, 30);
     xlabel('X (m)'); ylabel('Y (m)'); zlabel('Z (m)');
 
-    figure(fig(6));
-    hold on;
-  
+    figure(fig(6)); % control inputs plot
     subplot(4, 1, 1); hold on; grid on; box on;
     xlabel("Time (s)"); ylabel("Z_c (N)");
     plot(time, control_input_array(1,:), col, 'LineWidth', 1.5);
