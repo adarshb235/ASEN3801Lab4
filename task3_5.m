@@ -5,6 +5,10 @@ close all
 %% variables
 g = 9.81;
 
+Ix = 5.8e-5;
+Iy = 7.2e-5;
+Iz = 1.0e-4;
+
 lambda1 = -2; % rad/s (-1/0.5s)
 lambda2 = -20; % rad/s (dominate lambda1)
 
@@ -32,7 +36,7 @@ max time constant = 1.25 sec -> -0.8 rad
 
 %% Root Locus
 % run K3 from 0 to 0.1 and gather eigenvalues
-K3_test = linspace(0, 0.1, 1000);
+K3_test = linspace(0, 1e-3, 1000);
 eigs_lat = zeros(3, length(K3_test));
 
 is_real = zeros(1, length(K3_test)); % used later to find most optimal k3
@@ -42,7 +46,8 @@ for i = 1:length(K3_test)
     
     A_lat = [0,         g,      0; 
              0,         0,      1; 
-         -K2_I*K3,   -K2_I,   -K1_I];
+         -K3/Ix,   -K2_I,   -K1_I];
+
          
     % calculate eigenvalues
     eigs_lat(:, i) = eig(A_lat);
