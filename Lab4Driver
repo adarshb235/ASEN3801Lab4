@@ -265,6 +265,74 @@ for i = 1:4
     end
 end
 
+figure(500); hold on; grid on; box on;
+K_vals = 0:0.1:20;
+roots_sys = zeros(3, length(K_vals));
+for i = 1:length(K_vals)
+    roots_sys(:, i) = roots([1, 12, 20, K_vals(i)]);
+end
+h1 = plot(real(roots_sys), imag(roots_sys), 'b.', 'MarkerSize', 8);
+h2 = plot(real(roots([1, 12, 20, 9])), imag(roots([1, 12, 20, 9])), 'r*', 'MarkerSize', 10);
+title('Prob 3.5: Root Locus for Outer Loop (K = 9 marked)');
+xlabel('Real Axis'); ylabel('Imaginary Axis');
+legend([h1(1), h2], 'Possible Roots', 'Selected Roots (K=9)');
+
+global TEST_AXIS;
+var_init_track = zeros(12, 1); 
+
+TEST_AXIS = 1; 
+[t_track_lon, var_track_lon] = ode45(@(t, var) QuadrotorEOM_VelocityTrack(t, var, g, m, I, d, km, nu, mu), t_span, var_init_track);
+
+cont_vec_track_lon = zeros(4, length(t_track_lon));
+for k = 1:length(t_track_lon)
+    state_k = var_track_lon(k, :)';
+    [Fc_k, Gc_k] = VelocityReferenceFeedback(t_track_lon(k), state_k);
+    cont_vec_track_lon(:, k) = [Fc_k(3); Gc_k]; 
+end
+
+PlotAircraftSim(t_track_lon, var_track_lon', cont_vec_track_lon, 601:606, 'b-');
+for f = 1:6
+    figure(600 + f);
+    sgtitle('Prob 3.7: X-Translation Velocity Tracking (0.5 m/s)', 'FontSize', 14, 'FontWeight', 'bold');
+    if f ~= 5
+        if f == 6
+            subplot(4,1,1); % Control inputs has 4 subplots
+        else
+            subplot(3,1,1); % Others have 3 subplots
+        end
+        legend('Longitudinal Response', 'Location', 'best');
+    else
+        legend('Trajectory', 'End', 'Start', 'Location', 'best');
+    end
+end
+
+TEST_AXIS = 2; 
+[t_track_lat, var_track_lat] = ode45(@(t, var) QuadrotorEOM_VelocityTrack(t, var, g, m, I, d, km, nu, mu), t_span, var_init_track);
+
+cont_vec_track_lat = zeros(4, length(t_track_lat));
+for k = 1:length(t_track_lat)
+    state_k = var_track_lat(k, :)';
+    [Fc_k, Gc_k] = VelocityReferenceFeedback(t_track_lat(k), state_k);
+    cont_vec_track_lat(:, k) = [Fc_k(3); Gc_k]; 
+end
+
+PlotAircraftSim(t_track_lat, var_track_lat', cont_vec_track_lat, 701:706, 'r-');
+for f = 1:6
+    figure(700 + f);
+    sgtitle('Prob 3.7: Y-Translation Velocity Tracking (0.5 m/s)', 'FontSize', 14, 'FontWeight', 'bold');
+
+    if f ~= 5
+        if f == 6
+            subplot(4,1,1);
+        else
+            subplot(3,1,1);
+        end
+        legend('Lateral Response', 'Location', 'best');
+    else
+        legend('Trajectory', 'End', 'Start', 'Location', 'best');
+    end
+end
+
 %% Task 1 Func
 
 function PlotAircraftSim(time, aircraft_state_array, control_input_array, fig, col)
@@ -409,7 +477,7 @@ function var_dot = QuadrotorEOM(t, var, g, m, I, d, km, nu, mu, motor_forces)
     A_mat = [-1 -1 -1 -1; -d/sqrt(2) -d/sqrt(2) d/sqrt(2) d/sqrt(2); d/sqrt(2) -d/sqrt(2) -d/sqrt(2) d/sqrt(2); km -km km -km];
     cont_vec = A_mat * motor_forces;
     w_skew = [0 -r q; r 0 -p; -q p 0] ;
-    x_3_dot = -åw_skew * [u; v; w] - g * [sin(theta); -cos(theta)*sin(phi); -cos(theta)*cos(phi)] + (1/m)*[0; 0; cont_vec(1)] - (nu/m)*[u; v; w];
+    x_3_dot = -w_skew * [u; v; w] - g * [sin(theta); -cos(theta)*sin(phi); -cos(theta)*cos(phi)] + (1/m)*[0; 0; cont_vec(1)] - (nu/m)*[u; v; w];
     x_4_dot = inv(I) * ([cont_vec(2); cont_vec(3); cont_vec(4)] - w_skew * I * [p; q; r] - mu * [p; q; r]);
     if (ignore_drag == 1)
     x_3_dot = -w_skew * [u; v; w] - g * [sin(theta); -cos(theta)*sin(phi); -cos(theta)*cos(phi)] + (1/m)*[0; 0; cont_vec(1)];
@@ -523,6 +591,48 @@ end
 
 function var_dot = QuadrotorEOM_Nonlinear_ClosedLoop(t, var, g, m, I, d, km, nu, mu)
     [Fc, Gc] = InnerLoopFeedback(var);
+    motor_forces = ComputeMotorForces(Fc, Gc, d, km);
+    var_dot = QuadrotorEOM(t, var, g, m, I, d, km, nu, mu, motor_forces);
+end
+
+function [Fc, Gc] = VelocityReferenceFeedback(t, var)
+    global TEST_AXIS;
+    
+    m = 0.068; g = 9.81;
+    Ix = 5.8e-5; Iy = 7.2e-5;
+    
+    phi = var(4); theta = var(5);
+    u = var(7); v = var(8);
+    p = var(10); q = var(11); r = var(12);
+    
+    k1 = 12 * Ix; k2 = 20 * Ix;
+    k4 = 12 * Iy; k5 = 20 * Iy;
+    k_r = 0.004; 
+    
+    k3_lat = 9 * Ix / g;
+    k3_lon = -9 * Iy / g; 
+    
+    u_r = 0; 
+    v_r = 0;
+    
+    if t <= 2.0
+        if isempty(TEST_AXIS) || TEST_AXIS == 1
+            u_r = 0.5;
+        elseif TEST_AXIS == 2
+            v_r = 0.5; 
+        end
+    end
+    
+    L_c = -k1 * p - k2 * phi + k3_lat * (v_r - v);
+    M_c = -k4 * q - k5 * theta + k3_lon * (u_r - u);
+    N_c = -k_r * r;
+    
+    Fc = [0; 0; -m*g];
+    Gc = [L_c; M_c; N_c];
+end
+
+function var_dot = QuadrotorEOM_VelocityTrack(t, var, g, m, I, d, km, nu, mu)
+    [Fc, Gc] = VelocityReferenceFeedback(t, var);
     motor_forces = ComputeMotorForces(Fc, Gc, d, km);
     var_dot = QuadrotorEOM(t, var, g, m, I, d, km, nu, mu, motor_forces);
 end
